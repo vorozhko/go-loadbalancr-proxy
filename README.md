@@ -1,8 +1,13 @@
 # HTTP proxy todo
 
-* Add target hosts and listen ports configuration thorugh YAML parameter [done]
-* Calculate number of connection per target [done]
-* Add connections based ballancing between instances [done]
+## Features list
+[Load balancing](https://en.wikipedia.org/wiki/Load_balancing_(computing))
+
+## Milestone 0 [completed]
+
+* Add target hosts and listen ports configuration thorugh YAML parameter
+* Calculate number of connection per target
+* Add connections based ballancing between instances
 
 ## Milestone 1
 ### Retry
@@ -32,5 +37,4 @@
 * API to display statistics(Prometheus format?)
 
 
-## More features
-[Load balancing](https://en.wikipedia.org/wiki/Load_balancing_(computing))
+
