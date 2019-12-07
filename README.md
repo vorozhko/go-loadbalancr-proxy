@@ -1,4 +1,4 @@
-# HTTP proxy todo
+# Loadbalancer in Golang
 
 ## Features list
 [Load balancing](https://en.wikipedia.org/wiki/Load_balancing_(computing))
