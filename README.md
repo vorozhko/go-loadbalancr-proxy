@@ -1,40 +1,69 @@
 # Loadbalancer in Golang
 
 ## Features list
-[Load balancing](https://en.wikipedia.org/wiki/Load_balancing_(computing))
 
-## Milestone 0 [completed]
+### Requests handling
+* Request parsing: client ip, host, port, path
+* TLS termination
+* DDOS protection
 
-* Add target hosts and listen ports configuration thorugh YAML parameter
-* Calculate number of connection per target
-* Add connections based ballancing between instances
+### Backend server selection
+* Exclude down servers
+* Check if persistent session enabled
+* Content based routing - /video and /images go to different servers
+* Assymetric load - if manual weight for servers is set
+* Select best of 2 random servers
+* Least connections
+* Backend server load - get reported by application response headers if present
+* Response time
 
-## Milestone 1
-### Retry
-* Add retry function
-* Calculate target response time
+### Request to backend server
+* HTTP compression
+* Error handling - show custom error message to user
+* Content filtering - modify request content by some rules
+* Retry on error
+* 2nd backend server on error - use second best backend server from server selection step
 
-### Persistence
-* Persistent connection
+### Persistent data
+* Servers status: up/down
+* Servers load
+* Servers connections
+* Servers resposne time: median, 95pt, 99pt for past 5 minutes
+* Monitoring: response time, network IO, status codes, errors rate
+* Storage VaultDB
 
-### HA Pairs
-* Run in pairs
-* Replicate sessions between pairs
+### Loadbalancer manager
+* YAML: config file to manage LB settings
+* YAML: Load multi listeners and backend servers endpoints
+* YAML: Load persistent settings
+* YAML: Load manual weights for backend servers
+* Re-read config file by SIGNAL
 
-## Milestone 2
-### API
-* Introduce REST API framework
+### Infrastructure
+* Add Docker support
+* Run in distiributed HA pairs
+* Share state between HA pairs
+* Add Kubernetes support
 
-### Listeners manager
-* API to manage listeners
+## Roadmap
 
-### Targets
-* API to manage targets
+### Milestone 1
+* Design go code modular structure
+* Refactor implemented features into modular structure
 
-## Milestone 3
+### Milestone 2
+* YAML: Load multi listeners and backend servers endpoints
+* Store servers status: up/down
+* Exlcude down servers
+* Retry on error
+* Request parsing: client ip, host, port, path
 
-### Stats
-* API to display statistics(Prometheus format?)
+## Releases
 
+### Release 0.0.1
+* Added: YAML config file to manage LB settings
+* Added: Load single listener and multiple backend servers
+* Added: Least connections algorithm for servers selection
 
-
+### Links
+[Load balancing wiki page](https://en.wikipedia.org/wiki/Load_balancing_(computing))
