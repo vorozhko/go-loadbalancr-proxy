@@ -66,4 +66,4 @@
 * Added: Least connections algorithm for servers selection
 
 ### Links
-[Load balancing wiki page](https://en.wikipedia.org/wiki/Load_balancing_(computing))
+* [Load balancing wiki page](https://en.wikipedia.org/wiki/Load_balancing_(computing))
