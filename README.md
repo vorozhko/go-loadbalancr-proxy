@@ -1,5 +1,34 @@
 # Loadbalancer in Golang
 
+## Usage
+Describe load balancing ports and targets in config.yaml. See [example config file](example/config.yaml).
+
+```
+import "gitlab.com/vorozhko/loadbalancer"
+
+func main() {
+	var lb loadbalancer.Loadbalancer
+	lb.Start("config.yaml")
+}
+
+```
+## Roadmap
+
+### Milestone 0 ([Release 0.0.1](https://gitlab.com/vorozhko/loadbalancer/-/tags/v0.0.1))
+* Prototype first load balancer version
+
+### Milestone 1 (WIP)
+* Design code structure
+* Impleement round roubin load balancing
+
+### Milestone 2
+* YAML: Load multi listeners and backend servers endpoints
+* Store servers status: up/down
+* Exlcude down servers
+* Retry on error
+* Request parsing: client ip, host, port, path
+
+
 ## Features list
 
 ### Requests handling
@@ -17,7 +46,7 @@
 * Backend server load - get reported by application response headers if present
 * Response time
 
-### Request to backend server
+### Upstream requests
 * HTTP compression
 * Error handling - show custom error message to user
 * Content filtering - modify request content by some rules
@@ -44,19 +73,6 @@
 * Run in distiributed HA pairs
 * Share state between HA pairs
 * Add Kubernetes support
-
-## Roadmap
-
-### Milestone 1
-* Design go code modular structure
-* Refactor implemented features into modular structure
-
-### Milestone 2
-* YAML: Load multi listeners and backend servers endpoints
-* Store servers status: up/down
-* Exlcude down servers
-* Retry on error
-* Request parsing: client ip, host, port, path
 
 ## Releases
 
