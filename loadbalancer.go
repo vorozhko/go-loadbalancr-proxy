@@ -6,18 +6,13 @@ import (
 	"log"
 	"net/http"
 
-	"gopkg.in/yaml.v2"
+	config "gitlab.com/vorozhko/loadbalancer/config"
 )
 
 type Loadbalancer struct {
-	config     Config
+	config     config.Config
 	connection int
 	targets    []TargetInstance
-}
-
-type Config struct {
-	Listen  string
-	Targets []string
 }
 
 type TargetInstance struct {
@@ -39,28 +34,13 @@ func (t *TargetInstance) GetConnections() int {
 }
 
 func (lb *Loadbalancer) Start(configFile string) {
-	err := lb.loadConfig(configFile)
+	lb.config, err = config.InitConfig(configFile)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	lb.initTargets()
+	//lb.initTargets()
 	http.HandleFunc("/", lb.httpProxy)
 	log.Fatal(http.ListenAndServe(":"+lb.config.Listen, nil))
-}
-
-func (lb *Loadbalancer) loadConfig(filename string) error {
-	yml, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return err
-	}
-
-	var c Config
-	err = yaml.Unmarshal(yml, &c)
-	if err != nil {
-		return err
-	}
-	lb.config = c
-	return nil
 }
 
 func (lb *Loadbalancer) initTargets() {
