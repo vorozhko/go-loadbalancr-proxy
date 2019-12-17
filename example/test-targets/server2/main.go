@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -15,6 +16,8 @@ func main() {
 		io.WriteString(w, "Server 2!\n")
 	}
 
+	port := ":8083"
 	http.HandleFunc("/", helloHandler)
-	log.Fatal(http.ListenAndServe(":8082", nil))
+	fmt.Printf("Listening on port %s", port)
+	log.Fatal(http.ListenAndServe(port, nil))
 }

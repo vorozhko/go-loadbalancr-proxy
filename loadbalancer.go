@@ -3,95 +3,70 @@ package loadbalancer
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	config "gitlab.com/vorozhko/loadbalancer/config"
+	"gitlab.com/vorozhko/loadbalancer/roundrobin"
 )
 
+//Loadbalancer - represent an app instance
 type Loadbalancer struct {
-	config     config.Config
-	connection int
-	targets    []TargetInstance
+	config     *config.Config
+	roundRobin *roundrobin.RoundRobin
 }
 
-type TargetInstance struct {
-	host        string
-	connections int
-}
-
-func (t *TargetInstance) StartConnection() {
-	t.connections++
-}
-func (t *TargetInstance) EndConnection() {
-	t.connections--
-}
-func (t *TargetInstance) GetHost() string {
-	return t.host
-}
-func (t *TargetInstance) GetConnections() int {
-	return t.connections
-}
-
-func (lb *Loadbalancer) Start(configFile string) {
+//Start - main entry point
+func (lb *Loadbalancer) Start(configFile string) (err error) {
 	lb.config, err = config.InitConfig(configFile)
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
-	//lb.initTargets()
+	//todo: replace default Round Robin with algorithm selection
+	lb.roundRobin = roundrobin.InitRoundRobin(lb.config.Targets[0])
+	//todo: replace ListenAndServe with multi port listen
 	http.HandleFunc("/", lb.httpProxy)
-	log.Fatal(http.ListenAndServe(":"+lb.config.Listen, nil))
+	listenPort := fmt.Sprintf(":%d", lb.config.Listeners[0])
+	fmt.Printf("Listening on port: %s", listenPort)
+	return http.ListenAndServe(listenPort, nil)
 }
 
-func (lb *Loadbalancer) initTargets() {
-	if len(lb.config.Targets) == 0 {
-		return
-	}
-	lb.targets = make([]TargetInstance, len(lb.config.Targets))
-	for index, target := range lb.config.Targets {
-		lb.targets[index].host = target
-	}
+func (lb *Loadbalancer) getUpstream() string {
+	//todo: replace default Round Robin with algorithm selection
+	return lb.roundRobin.GetUpstream()
 }
 
 func (lb *Loadbalancer) httpProxy(w http.ResponseWriter, req *http.Request) {
-	lb.connection++
-	fmt.Printf("Total connections: %d\n", lb.connection)
 	var client http.Client
-	target := lb.getTarget()
-	target.StartConnection()
-	fmt.Printf("server %s, connections %d\n", target.GetHost(), target.GetConnections())
-	response, err := client.Get(target.GetHost() + req.RequestURI)
-	target.EndConnection()
-	fmt.Printf("server %s, connections %d\n", target.GetHost(), target.GetConnections())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	resheader := w.Header()
-	for hk := range response.Header {
-		resheader.Add(hk, response.Header.Get(hk))
-	}
-	if err != nil {
-		fmt.Fprintf(w, "%s", err.Error())
-	}
-	defer response.Body.Close()
 
-	w.WriteHeader(response.StatusCode)
+	upstream := lb.getUpstream()
+	upstreamRes, err := client.Get(upstream + req.RequestURI)
 
-	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		fmt.Fprintf(w, "%s", err.Error())
+		//todo: replace with Logger middleware
+		fmt.Printf("%s", err)
 	}
+	if upstreamRes == nil {
+		//todo: replace with Logger middleware
+		fmt.Printf("Empty response from server")
+	}
+	defer upstreamRes.Body.Close()
+
+	for hk := range upstreamRes.Header {
+		w.Header().Add(hk, upstreamRes.Header.Get(hk))
+	}
+
+	body, err := ioutil.ReadAll(upstreamRes.Body)
+	if err != nil {
+		//todo: replace with Logger middleware
+		fmt.Printf("%s", err)
+		//todo: replace with Error middleware which will print standard error message to the user
+		fmt.Fprintf(w, "Internal Server Error")
+		//todo: display debug information only when debug is enabled
+		fmt.Fprintf(w, "%s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+
+	}
+	//if everything OK, use the status from upstream
+	w.WriteHeader(upstreamRes.StatusCode)
 	fmt.Fprintf(w, "%s", body)
-}
-
-func (lb *Loadbalancer) getTarget() *TargetInstance {
-	minIndex := 0
-	for index, t := range lb.targets {
-		if t.GetConnections() < lb.targets[minIndex].GetConnections() {
-			minIndex = index
-		}
-	}
-
-	return &lb.targets[minIndex]
 }

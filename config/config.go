@@ -6,14 +6,18 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+//Config - represent yaml configuration of loadbalancer
 type Config struct {
-	Listeners []int `yaml:"listeners"`
-	Targets   []struct {
-		FromPort  int      `yaml:"fromPort"`
-		ToPort    int      `yaml:"toPort"`
-		Name      string   `yaml:"name"`
-		Instances []string `yaml:"instances"`
-	} `yaml:"targetGroups"`
+	Listeners []int         `yaml:"listeners"`
+	Targets   []TargetGroup `yaml:"targetGroups"`
+}
+
+//TargetGroup - represent a group of instances
+type TargetGroup struct {
+	FromPort  int      `yaml:"fromPort"`
+	ToPort    int      `yaml:"toPort"`
+	Name      string   `yaml:"name"`
+	Instances []string `yaml:"instances"`
 }
 
 func InitConfig(filename string) (c *Config, err error) {

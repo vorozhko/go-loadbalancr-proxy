@@ -1,2 +1,16 @@
-listen: 8080
-targets: [http://localhost:8081, http://localhost:8082]
+listeners: [8081, 8443]
+targetGroups: 
+- name: web-http
+  fromPort: 8081
+  toPort: 8082
+  instances:
+  - http://exmaple0.localhost
+  - http://example1.localhost
+  - http://example2.localhost
+- name: web-tls
+  fromPort: 8443
+  toPort: 8082
+  instances:
+  - http://localhost
+  - http://localhost
+  - http://localhost
