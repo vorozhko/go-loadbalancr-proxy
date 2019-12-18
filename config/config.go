@@ -8,15 +8,16 @@ import (
 
 //Config - represent yaml configuration of loadbalancer
 type Config struct {
-	Listeners []int         `yaml:"listeners"`
-	Targets   []TargetGroup `yaml:"targetGroups"`
+	Listeners []int               `yaml:"listeners"`
+	Targets   []ConfigTargetGroup `yaml:"targetGroups"`
 }
 
-//TargetGroup - represent a group of instances
-type TargetGroup struct {
+//ConfigTargetGrup - represent a group of instances
+type ConfigTargetGroup struct {
 	FromPort  int      `yaml:"fromPort"`
 	ToPort    int      `yaml:"toPort"`
 	Name      string   `yaml:"name"`
+	Path      string   `yaml:"path"`
 	Instances []string `yaml:"instances"`
 }
 

@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	config "gitlab.com/vorozhko/loadbalancer/config"
-	"gitlab.com/vorozhko/loadbalancer/loadbalancer"
 	"gitlab.com/vorozhko/loadbalancer/roundrobin"
+	"gitlab.com/vorozhko/loadbalancer/targetgroup"
 )
 
 //Server - is server instance
@@ -20,9 +20,7 @@ func (app *Server) Start(configFile string) (err error) {
 	if err != nil {
 		return err
 	}
-	if len(app.config.Listeners) == 0 {
-		return fmt.Errorf("No open ports defined for listeners")
-	}
+
 	finish := make(chan bool)
 	err = app.startListeners()
 	if err != nil {
@@ -33,22 +31,34 @@ func (app *Server) Start(configFile string) (err error) {
 }
 
 func (app *Server) startListeners() error {
-	for index, port := range app.config.Listeners {
-		//todo: separate app from Load balancer object
-		lb := loadbalancer.Loadbalancer{}
-		if len(app.config.Targets) > index {
-			//todo: replace default Round Robin with algorithm selection
-			roundRobin := roundrobin.InitRoundRobin(app.config.Targets[index])
-			lb.SetUpstreamSelection(roundRobin)
-		}
-		//todo: replace ListenAndServe with multi port listen
-		listenPort := fmt.Sprintf(":%d", port)
+	if len(app.config.Listeners) == 0 {
+		return fmt.Errorf("No open ports defined for listeners")
+	}
 
+	targetGroupsList := make(map[int][]*targetgroup.TargetGroup, len(app.config.Targets))
+	for _, target := range app.config.Targets {
+		//Multiple target groups support split by URI.Path
+		tg := targetgroup.InitTargetGroup(target.FromPort, target.ToPort, target.Instances, target.Path)
+		roundRobin := roundrobin.RoundRobin{}
+		tg.SetUpstreamSelection(&roundRobin)
+		targetGroupsList[target.FromPort] = append(targetGroupsList[target.FromPort], tg)
+	}
+
+	//open listener ports
+	for _, port := range app.config.Listeners {
+		listenPort := fmt.Sprintf(":%d", port)
+		targets, ok := targetGroupsList[port]
 		go func() {
 			mux := http.NewServeMux()
-			//http.HandleFunc("/", lb.httpProxy)
-			reqHandler := &lb
-			mux.Handle("/", reqHandler)
+			if ok == true {
+				for _, tg := range targets {
+					path := tg.GetPath()
+					if path == "" {
+						path = "/"
+					}
+					mux.Handle(path, tg)
+				}
+			}
 			fmt.Printf("Listening on port: %s\n", listenPort)
 			http.ListenAndServe(listenPort, mux)
 		}()

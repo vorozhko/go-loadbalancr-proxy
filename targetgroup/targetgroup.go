@@ -1,4 +1,4 @@
-package loadbalancer
+package targetgroup
 
 import (
 	"fmt"
@@ -8,26 +8,45 @@ import (
 	"gitlab.com/vorozhko/loadbalancer/roundrobin"
 )
 
-//Loadbalancer - is a loadbalancer instance
-type Loadbalancer struct {
-	roundRobin *roundrobin.RoundRobin
+//TargetGroup - is a loadbalancer target group instance
+type TargetGroup struct {
+	toPort    int
+	fromPort  int
+	path      string
+	instances []string
+	selection *roundrobin.RoundRobin
 }
 
-func (lb *Loadbalancer) getUpstream() string {
+func InitTargetGroup(fromPort int, toPort int, instances []string, path string) *TargetGroup {
+	tg := TargetGroup{}
+	tg.fromPort = fromPort
+	tg.toPort = toPort
+	tg.path = path
+	tg.instances = instances
+	return &tg
+}
+
+func (tg *TargetGroup) getUpstream() string {
 	//todo: replace default Round Robin with algorithm selection
-	return lb.roundRobin.GetUpstream()
+
+	nextInstance := tg.selection.GetNextUpstreamIndex(len(tg.instances))
+	return tg.instances[nextInstance]
 }
 
 //SetUpstreamSelection - set an algorithm for select of upstream server
-func (lb *Loadbalancer) SetUpstreamSelection(roundRobin *roundrobin.RoundRobin) {
-	lb.roundRobin = roundRobin
+func (tg *TargetGroup) SetUpstreamSelection(roundRobin *roundrobin.RoundRobin) {
+	tg.selection = roundRobin
+}
+
+func (tg *TargetGroup) GetPath() string {
+	return tg.path
 }
 
 //ServeHTTP - implement http.Handler.ServeHTTP for server mux
-func (lb *Loadbalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (tg *TargetGroup) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var client http.Client
 
-	upstream := lb.getUpstream()
+	upstream := fmt.Sprintf("%s:%d", tg.getUpstream(), tg.toPort)
 	upstreamRes, err := client.Get(upstream + req.RequestURI)
 
 	if err != nil {

@@ -3,14 +3,20 @@ targetGroups:
 - name: web-http
   fromPort: 8081
   toPort: 8082
+  path: "/"
   instances:
-  - http://exmaple0.localhost
+  - http://example0.localhost
   - http://example1.localhost
-  - http://example2.localhost
+- name: web-http
+  fromPort: 8081
+  toPort: 8082
+  path: "/test"
+  instances:
+  - http://example2.localhost  
 - name: web-tls
   fromPort: 8443
   toPort: 8082
   instances:
-  - http://exmaple0.localhost
+  - http://example0.localhost
   - http://example1.localhost
   - http://example2.localhost
