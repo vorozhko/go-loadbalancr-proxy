@@ -5,29 +5,12 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	config "gitlab.com/vorozhko/loadbalancer/config"
 	"gitlab.com/vorozhko/loadbalancer/roundrobin"
 )
 
-//Loadbalancer - represent an app instance
+//Loadbalancer - is a loadbalancer instance
 type Loadbalancer struct {
-	config     *config.Config
 	roundRobin *roundrobin.RoundRobin
-}
-
-//Start - main entry point
-func (lb *Loadbalancer) Start(configFile string) (err error) {
-	lb.config, err = config.InitConfig(configFile)
-	if err != nil {
-		return err
-	}
-	//todo: replace default Round Robin with algorithm selection
-	lb.roundRobin = roundrobin.InitRoundRobin(lb.config.Targets[0])
-	//todo: replace ListenAndServe with multi port listen
-	http.HandleFunc("/", lb.httpProxy)
-	listenPort := fmt.Sprintf(":%d", lb.config.Listeners[0])
-	fmt.Printf("Listening on port: %s", listenPort)
-	return http.ListenAndServe(listenPort, nil)
 }
 
 func (lb *Loadbalancer) getUpstream() string {
@@ -35,7 +18,13 @@ func (lb *Loadbalancer) getUpstream() string {
 	return lb.roundRobin.GetUpstream()
 }
 
-func (lb *Loadbalancer) httpProxy(w http.ResponseWriter, req *http.Request) {
+//SetUpstreamSelection - set an algorithm for select of upstream server
+func (lb *Loadbalancer) SetUpstreamSelection(roundRobin *roundrobin.RoundRobin) {
+	lb.roundRobin = roundRobin
+}
+
+//ServeHTTP - implement http.Handler.ServeHTTP for server mux
+func (lb *Loadbalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var client http.Client
 
 	upstream := lb.getUpstream()

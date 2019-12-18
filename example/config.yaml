@@ -11,6 +11,6 @@ targetGroups:
   fromPort: 8443
   toPort: 8082
   instances:
-  - http://localhost
-  - http://localhost
-  - http://localhost
+  - http://exmaple0.localhost
+  - http://example1.localhost
+  - http://example2.localhost
