@@ -17,11 +17,11 @@ func main() {
 ### Milestone 0 ([Release 0.0.1](https://gitlab.com/vorozhko/loadbalancer/-/tags/v0.0.1))
 * Prototype first load balancer version
 
-### Milestone 1 (WIP)
+### Milestone 1 ([Release 0.0.2](https://gitlab.com/vorozhko/loadbalancer/-/tags/v0.0.2))
 * Design code structure
 * Impleement round roubin load balancing
 
-### Milestone 2
+### Milestone 2 (WIP)
 * YAML: Load multi listeners and backend servers endpoints
 * Store servers status: up/down
 * Exlcude down servers
