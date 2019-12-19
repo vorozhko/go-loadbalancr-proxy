@@ -1,11 +1,13 @@
 package main
 
-import "gitlab.com/vorozhko/loadbalancer"
+import (
+	"log"
 
-import "log"
+	loadbalancer "gitlab.com/vorozhko/loadbalancer/loadbalancer"
+)
 
 func main() {
-	server := loadbalancer.Server{}
+	server := loadbalancer.LoadBalancer{}
 	err := server.Start("config.yaml")
 	if err != nil {
 		log.Fatal(err)

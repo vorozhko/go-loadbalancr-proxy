@@ -21,6 +21,22 @@ type ConfigTargetGroup struct {
 	Instances []string `yaml:"instances"`
 }
 
+func (ctg *ConfigTargetGroup) GetFromPort() int {
+	return ctg.FromPort
+}
+
+func (ctg *ConfigTargetGroup) GetToPort() int {
+	return ctg.ToPort
+}
+
+func (ctg *ConfigTargetGroup) GetPath() string {
+	return ctg.Path
+}
+
+func (ctg *ConfigTargetGroup) GetInstances() []string {
+	return ctg.Instances
+}
+
 func InitConfig(filename string) (c *Config, err error) {
 	yml, err := ioutil.ReadFile(filename)
 	if err != nil {

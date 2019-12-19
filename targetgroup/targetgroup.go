@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"gitlab.com/vorozhko/loadbalancer/config"
 	"gitlab.com/vorozhko/loadbalancer/roundrobin"
 )
 
@@ -17,12 +18,12 @@ type TargetGroup struct {
 	selection *roundrobin.RoundRobin
 }
 
-func InitTargetGroup(fromPort int, toPort int, instances []string, path string) *TargetGroup {
+func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
 	tg := TargetGroup{}
-	tg.fromPort = fromPort
-	tg.toPort = toPort
-	tg.path = path
-	tg.instances = instances
+	tg.fromPort = target.GetFromPort()
+	tg.toPort = target.GetToPort()
+	tg.path = target.GetPath()
+	tg.instances = target.GetInstances()
 	return &tg
 }
 
