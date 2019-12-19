@@ -7,11 +7,12 @@ type RoundRobin struct {
 }
 
 //GetUpstream - return next upstream host based on round robin algorithm
-func (rr *RoundRobin) GetNextUpstreamIndex(max int) int {
+func (rr *RoundRobin) GetNextUpstreamIndex(instances []string) string {
+	max := len(instances)
 	if rr.currentInstance >= max {
 		rr.currentInstance = 0
 	}
 	instance := rr.currentInstance
 	rr.currentInstance++
-	return instance
+	return instances[instance]
 }
