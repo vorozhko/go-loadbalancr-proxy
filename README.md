@@ -21,7 +21,7 @@ func main() {
 * Design code structure
 * Impleement round roubin load balancing
 
-### Milestone 2 (WIP)
+### Milestone 2 ([Release 0.0.3](https://gitlab.com/vorozhko/loadbalancer/-/tags/v0.0.3))
 * YAML: Load multi listeners and backend servers endpoints (done)
 * Store servers status: up/down (done)
 * Exlcude down servers (done)
@@ -29,9 +29,12 @@ func main() {
 * Content based routing (done)
 * Check if persistent session enabled (done)
 
-### Milestone 3
+### Milestone 3 (WIP)
 * Retry on error
 * Request parsing: client ip, host, port, path
+* HTTP compression
+* Error handling - show custom error message to user
+* Content filtering - modify request content by some rules
 
 
 ## Features list
