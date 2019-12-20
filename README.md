@@ -22,9 +22,14 @@ func main() {
 * Impleement round roubin load balancing
 
 ### Milestone 2 (WIP)
-* YAML: Load multi listeners and backend servers endpoints
-* Store servers status: up/down
-* Exlcude down servers
+* YAML: Load multi listeners and backend servers endpoints (done)
+* Store servers status: up/down (done)
+* Exlcude down servers (done)
+* Least connections algorithm (done)
+* Content based routing (done)
+* Check if persistent session enabled (done)
+
+### Milestone 3
 * Retry on error
 * Request parsing: client ip, host, port, path
 
