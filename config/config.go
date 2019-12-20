@@ -18,6 +18,7 @@ type ConfigTargetGroup struct {
 	ToPort    int      `yaml:"toPort"`
 	Name      string   `yaml:"name"`
 	Path      string   `yaml:"path"`
+	Sticky    bool     `yaml:"sticky"`
 	Instances []string `yaml:"instances"`
 }
 
@@ -35,6 +36,9 @@ func (ctg *ConfigTargetGroup) GetPath() string {
 
 func (ctg *ConfigTargetGroup) GetInstances() []string {
 	return ctg.Instances
+}
+func (ctg *ConfigTargetGroup) GetStickySession() bool {
+	return ctg.Sticky
 }
 
 func InitConfig(filename string) (c *Config, err error) {

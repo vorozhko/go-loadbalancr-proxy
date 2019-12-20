@@ -18,6 +18,7 @@ type TargetGroup struct {
 	instances          []string
 	selection          *roundrobin.RoundRobin
 	instanceNotHealthy map[string]bool
+	isStickySession    bool
 }
 
 func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
@@ -26,6 +27,7 @@ func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
 	tg.toPort = target.GetToPort()
 	tg.path = target.GetPath()
 	tg.instances = target.GetInstances()
+	tg.isStickySession = target.GetStickySession()
 	//todo: create custom type for instances or instance health
 	tg.instanceNotHealthy = make(map[string]bool, len(target.GetInstances()))
 	go func() {
@@ -50,8 +52,36 @@ func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
 	return &tg
 }
 
-func (tg *TargetGroup) getUpstream() (string, error) {
-	//todo: replace default Round Robin with algorithm selection
+func (tg *TargetGroup) getUpstream(w http.ResponseWriter, req *http.Request) (string, error) {
+	//todo: here several algorithms of upstream selection could be implemented
+	//the best one should win
+	//Algorithms example: round robin, least connect, sticky session could determine host selection
+	//Priority must go to sticky session if set, then least connect and round robin.
+
+	//sticky session
+	if tg.isStickySession == true {
+		stickyCookie, err := req.Cookie("sticky")
+		if err == nil {
+			return stickyCookie.Value, nil
+		}
+	}
+
+	//least connect
+
+	//round robin
+	upstreamHost, err := tg.getUpstreamRoundRobin()
+	if err != nil {
+		return "", err
+	}
+
+	if tg.isStickySession == true {
+		newCookie := http.Cookie{Name: "sticky", Value: upstreamHost}
+		http.SetCookie(w, &newCookie)
+	}
+	return upstreamHost, nil
+}
+
+func (tg *TargetGroup) getUpstreamRoundRobin() (string, error) {
 	instances := make([]string, 0)
 	for _, inst := range tg.instances {
 		if tg.instanceNotHealthy[inst] == false {
@@ -77,7 +107,9 @@ func (tg *TargetGroup) GetPath() string {
 func (tg *TargetGroup) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var client http.Client
 
-	upstreamHost, err := tg.getUpstream()
+	//get upstream
+	//upstreamHost := req.Context().Value('upstream')
+	upstreamHost, err := tg.getUpstream(w, req)
 	if err != nil {
 		fmt.Print(err)
 		return
@@ -85,6 +117,7 @@ func (tg *TargetGroup) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	upstream := fmt.Sprintf("%s:%d", upstreamHost, tg.toPort)
 	upstreamRes, err := client.Get(upstream + req.RequestURI)
 
+	//process response
 	if err != nil {
 		//todo: replace with Logger middleware
 		fmt.Printf("%s", err)

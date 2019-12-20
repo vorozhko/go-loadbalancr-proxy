@@ -11,7 +11,10 @@ targetGroups:
   fromPort: 8081
   toPort: 8082
   path: "/test"
+  sticky: true
   instances:
+  - http://example0.localhost
+  - http://example1.localhost
   - http://example2.localhost  
 - name: web-tls
   fromPort: 8443

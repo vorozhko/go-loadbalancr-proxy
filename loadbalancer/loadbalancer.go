@@ -61,7 +61,9 @@ func (app *LoadBalancer) startListeners() error {
 					if path == "" {
 						path = "/"
 					}
-					//one handler per port and path
+					//setup handler
+					//handler per port and path
+					//myAppHandler := http.HandlerFunc(myApp)
 					mux.Handle(path, tg)
 				}
 			}
