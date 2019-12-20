@@ -22,12 +22,12 @@ func main() {
 * Impleement round roubin load balancing
 
 ### Milestone 2 ([Release 0.0.3](https://gitlab.com/vorozhko/loadbalancer/-/tags/v0.0.3))
-* YAML: Load multi listeners and backend servers endpoints (done)
-* Store servers status: up/down (done)
-* Exlcude down servers (done)
-* Least connections algorithm (done)
-* Content based routing (done)
-* Check if persistent session enabled (done)
+* YAML: Load multi listeners and backend servers endpoints
+* Store servers status: up/down
+* Exlcude down servers
+* Least connections algorithm
+* Content based routing
+* Sticky sessions support
 
 ### Milestone 3 (WIP)
 * Retry on error
@@ -88,6 +88,18 @@ func main() {
 * Added: YAML config file to manage LB settings
 * Added: Load single listener and multiple backend servers
 * Added: Least connections algorithm for servers selection
+
+### Release 0.0.2
+* New code structure
+* Impleemented round roubin load balancing
+
+### Release 0.0.3
+* Added support for multiple target groups on the same port split by request Path
+* Added content based routing. See ```Path``` in YAML file.
+* Added health check monitor 
+* Exlcude down servers from upstream selection
+* Implemented Least connections algorithm
+* Added support for sticky sessions
 
 ### Links
 * [Load balancing wiki page](https://en.wikipedia.org/wiki/Load_balancing_(computing))
