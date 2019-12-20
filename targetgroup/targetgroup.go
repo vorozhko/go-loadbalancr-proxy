@@ -12,13 +12,14 @@ import (
 
 //TargetGroup - is a loadbalancer target group instance
 type TargetGroup struct {
-	toPort             int
-	fromPort           int
-	path               string
-	instances          []string
-	selection          *roundrobin.RoundRobin
-	instanceNotHealthy map[string]bool
-	isStickySession    bool
+	toPort              int
+	fromPort            int
+	path                string
+	instances           []string
+	selection           *roundrobin.RoundRobin
+	instanceNotHealthy  map[string]bool
+	instanceConnections map[string]int
+	isStickySession     bool
 }
 
 func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
@@ -30,6 +31,7 @@ func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
 	tg.isStickySession = target.GetStickySession()
 	//todo: create custom type for instances or instance health
 	tg.instanceNotHealthy = make(map[string]bool, len(target.GetInstances()))
+	tg.instanceConnections = make(map[string]int, len(target.GetInstances()))
 	go func() {
 		//health checker
 		for {
@@ -58,23 +60,30 @@ func (tg *TargetGroup) getUpstream(w http.ResponseWriter, req *http.Request) (st
 	//Algorithms example: round robin, least connect, sticky session could determine host selection
 	//Priority must go to sticky session if set, then least connect and round robin.
 
-	//sticky session
-	if tg.isStickySession == true {
-		stickyCookie, err := req.Cookie("sticky")
-		if err == nil {
-			return stickyCookie.Value, nil
-		}
-	}
-
 	//least connect
-
-	//round robin
-	upstreamHost, err := tg.getUpstreamRoundRobin()
+	upstreamHost, err := tg.getUpstreamLeastConnect()
 	if err != nil {
 		return "", err
 	}
 
+	if upstreamHost == "" {
+		//round robin
+		upstreamHost, err = tg.getUpstreamRoundRobin()
+		if err != nil {
+			return "", err
+		}
+		fmt.Printf("Round robin host %s\n", upstreamHost)
+	}
+
+	//sticky session
 	if tg.isStickySession == true {
+		stickyCookie, err := req.Cookie("sticky")
+		if err == nil {
+			fmt.Printf("Sticky host %s\n", stickyCookie.Value)
+			return stickyCookie.Value, nil
+		}
+
+		//if stickyness enabled then set new cookie
 		newCookie := http.Cookie{Name: "sticky", Value: upstreamHost}
 		http.SetCookie(w, &newCookie)
 	}
@@ -82,6 +91,31 @@ func (tg *TargetGroup) getUpstream(w http.ResponseWriter, req *http.Request) (st
 }
 
 func (tg *TargetGroup) getUpstreamRoundRobin() (string, error) {
+	instances, err := tg.getHealtyInstances()
+	if err != nil {
+		return "", err
+	}
+	return tg.selection.GetNextUpstreamIndex(instances), nil
+}
+
+func (tg *TargetGroup) getUpstreamLeastConnect() (string, error) {
+	instances, err := tg.getHealtyInstances()
+	if err != nil {
+		return "", err
+	}
+	leastConnectInstance := instances[0]
+	leastConnectRequests := tg.instanceConnections[leastConnectInstance]
+	for _, inst := range instances {
+		if tg.instanceConnections[inst] < leastConnectRequests {
+			leastConnectRequests = tg.instanceConnections[inst]
+			leastConnectInstance = inst
+		}
+	}
+	fmt.Printf("Least connect host %s with %d connections\n", leastConnectInstance, leastConnectRequests)
+	return leastConnectInstance, nil
+}
+
+func (tg *TargetGroup) getHealtyInstances() ([]string, error) {
 	instances := make([]string, 0)
 	for _, inst := range tg.instances {
 		if tg.instanceNotHealthy[inst] == false {
@@ -89,9 +123,9 @@ func (tg *TargetGroup) getUpstreamRoundRobin() (string, error) {
 		}
 	}
 	if len(instances) == 0 {
-		return "", fmt.Errorf("No healthy hosts found\n")
+		return nil, fmt.Errorf("No healthy hosts found\n")
 	}
-	return tg.selection.GetNextUpstreamIndex(instances), nil
+	return instances, nil
 }
 
 //SetUpstreamSelection - set an algorithm for select of upstream server
@@ -114,8 +148,10 @@ func (tg *TargetGroup) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		fmt.Print(err)
 		return
 	}
+	tg.instanceConnections[upstreamHost]++
 	upstream := fmt.Sprintf("%s:%d", upstreamHost, tg.toPort)
 	upstreamRes, err := client.Get(upstream + req.RequestURI)
+	tg.instanceConnections[upstreamHost]--
 
 	//process response
 	if err != nil {

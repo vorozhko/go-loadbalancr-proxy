@@ -11,7 +11,7 @@ targetGroups:
   fromPort: 8081
   toPort: 8082
   path: "/test"
-  sticky: true
+  sticky: false
   instances:
   - http://example0.localhost
   - http://example1.localhost
