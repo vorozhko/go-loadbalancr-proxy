@@ -16,7 +16,7 @@ type TargetGroup struct {
 	fromPort            int
 	path                string
 	instances           []string
-	selection           *roundrobin.RoundRobin
+	roundrobin          *roundrobin.RoundRobin
 	instanceNotHealthy  map[string]bool
 	instanceConnections map[string]int
 	isStickySession     bool
@@ -32,28 +32,29 @@ func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
 	//todo: create custom type for instances or instance health
 	tg.instanceNotHealthy = make(map[string]bool, len(target.GetInstances()))
 	tg.instanceConnections = make(map[string]int, len(target.GetInstances()))
-	go func() {
-		//health checker
-		for {
-			if len(tg.instanceNotHealthy) > 0 {
-				for instance, status := range tg.instanceNotHealthy {
-					if status == false {
-						continue
-					}
-					upstream := fmt.Sprintf("%s:%d", instance, target.GetToPort())
-					res, err := http.Get(upstream)
-					if err == nil && res != nil {
-						tg.instanceNotHealthy[instance] = false
-						fmt.Printf("%s makred as healty\n", instance)
-					}
-				}
-			}
-			time.Sleep(25 * time.Second)
-		}
-	}()
+	go tg.healthChecker(25 * time.Second)
 	return &tg
 }
 
+//healthChecker - periodically check bad healthy hosts for recover
+func (tg *TargetGroup) healthChecker(checkInterval time.Duration) {
+	for {
+		if len(tg.instanceNotHealthy) > 0 {
+			for instance, status := range tg.instanceNotHealthy {
+				if status == false {
+					continue
+				}
+				upstream := fmt.Sprintf("%s:%d", instance, tg.toPort)
+				res, err := http.Get(upstream)
+				if err == nil && res != nil {
+					tg.instanceNotHealthy[instance] = false
+					fmt.Printf("%s makred as healty\n", instance)
+				}
+			}
+		}
+		time.Sleep(checkInterval)
+	}
+}
 func (tg *TargetGroup) getUpstream(w http.ResponseWriter, req *http.Request) (string, error) {
 	//todo: here several algorithms of upstream selection could be implemented
 	//the best one should win
@@ -76,6 +77,7 @@ func (tg *TargetGroup) getUpstream(w http.ResponseWriter, req *http.Request) (st
 	}
 
 	//sticky session
+	//todo: rename sticky with better name
 	if tg.isStickySession == true {
 		stickyCookie, err := req.Cookie("sticky")
 		if err == nil {
@@ -95,9 +97,11 @@ func (tg *TargetGroup) getUpstreamRoundRobin() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return tg.selection.GetNextUpstreamIndex(instances), nil
+	return tg.roundrobin.GetNextUpstreamIndex(instances), nil
 }
 
+//todo: move Least Connect alogirthm to dedicated package or combine with round robin in one package
+//getUpstreamLeastConnect - return upstream host with small number of concurrent connections
 func (tg *TargetGroup) getUpstreamLeastConnect() (string, error) {
 	instances, err := tg.getHealtyInstances()
 	if err != nil {
@@ -111,10 +115,12 @@ func (tg *TargetGroup) getUpstreamLeastConnect() (string, error) {
 			leastConnectInstance = inst
 		}
 	}
+	//todo: remove debug information
 	fmt.Printf("Least connect host %s with %d connections\n", leastConnectInstance, leastConnectRequests)
 	return leastConnectInstance, nil
 }
 
+//getHealtyInstances - return healthy instances
 func (tg *TargetGroup) getHealtyInstances() ([]string, error) {
 	instances := make([]string, 0)
 	for _, inst := range tg.instances {
@@ -130,7 +136,7 @@ func (tg *TargetGroup) getHealtyInstances() ([]string, error) {
 
 //SetUpstreamSelection - set an algorithm for select of upstream server
 func (tg *TargetGroup) SetUpstreamSelection(roundRobin *roundrobin.RoundRobin) {
-	tg.selection = roundRobin
+	tg.roundrobin = roundRobin
 }
 
 func (tg *TargetGroup) GetPath() string {
