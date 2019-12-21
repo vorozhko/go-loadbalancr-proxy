@@ -4,11 +4,20 @@
 Describe load balancing ports and targets in config.yaml. See [example config file](example/config.yaml).
 
 ```
-import "gitlab.com/vorozhko/loadbalancer"
+package main
+
+import (
+	"log"
+
+	loadbalancer "gitlab.com/vorozhko/loadbalancer/loadbalancer"
+)
 
 func main() {
-	var lb loadbalancer.Loadbalancer
-	lb.Start("config.yaml")
+	server := loadbalancer.LoadBalancer{}
+	err := server.Start("config.yaml")
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 ```
