@@ -12,7 +12,7 @@ func main() {
 	// Hello world, the web server
 
 	helloHandler := func(w http.ResponseWriter, req *http.Request) {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		io.WriteString(w, req.Host+"\n")
 	}
 	port := ":8082"

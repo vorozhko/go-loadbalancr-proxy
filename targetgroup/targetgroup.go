@@ -120,14 +120,14 @@ func (tg *TargetGroup) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		//todo: replace with Logger middleware
 		fmt.Printf("%s", err)
-		tg.instanceHealth.SetHealth(false, upstreamHost, tg.toPort)
+		tg.instanceHealth.SetHealth(false, upstreamHost)
 		fmt.Printf("%s makred unhealty\n", upstreamHost)
 		return
 	}
 	if upstreamRes == nil {
 		//todo: replace with Logger middleware
 		fmt.Printf("Empty response from server")
-		tg.instanceHealth.SetHealth(false, upstreamHost, tg.toPort)
+		tg.instanceHealth.SetHealth(false, upstreamHost)
 		fmt.Printf("%s makred unhealty\n", upstreamHost)
 		return
 	}

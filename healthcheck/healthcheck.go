@@ -7,7 +7,7 @@ import (
 )
 
 type InstanceHealth struct {
-	instances []Instance
+	instances map[string]Instance
 }
 
 type Instance struct {
@@ -25,13 +25,13 @@ func InitInstanceHealth(instances []string, toPort int) InstanceHealth {
 }
 
 func (ih *InstanceHealth) SetInstances(instances []string, toPort int) {
-	ih.instances = make([]Instance, len(instances))
-	for index, host := range instances {
+	ih.instances = make(map[string]Instance)
+	for _, host := range instances {
 		instance := Instance{}
 		instance.host = host
 		instance.healthy = true
 		instance.port = toPort
-		ih.instances[index] = instance
+		ih.instances[instance.host] = instance
 	}
 }
 
@@ -39,14 +39,15 @@ func (ih *InstanceHealth) SetInstances(instances []string, toPort int) {
 func (ih *InstanceHealth) HealthChecker(checkInterval time.Duration) {
 	for {
 		if len(ih.instances) > 0 {
-			for index, instance := range ih.instances {
+			for host, instance := range ih.instances {
 				if instance.healthy == true {
 					continue
 				}
 				upstream := fmt.Sprintf("%s:%d", instance.host, instance.port)
 				res, err := http.Get(upstream)
 				if err == nil && res != nil {
-					ih.instances[index].healthy = true
+					instance.healthy = true
+					ih.instances[host] = instance
 					fmt.Printf("%s makred as healty\n", instance.host)
 				}
 			}
@@ -65,10 +66,8 @@ func (ih *InstanceHealth) GetHealthyInstances() []string {
 	return instances
 }
 
-func (ih *InstanceHealth) SetHealth(healthy bool, host string, port int) {
-	for index, inst := range ih.instances {
-		if inst.host == host && inst.port == port {
-			ih.instances[index].healthy = healthy
-		}
-	}
+func (ih *InstanceHealth) SetHealth(healthy bool, host string) {
+	inst := ih.instances[host]
+	inst.healthy = healthy
+	ih.instances[host] = inst
 }
