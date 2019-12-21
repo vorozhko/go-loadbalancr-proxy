@@ -19,6 +19,7 @@ type TargetGroup struct {
 	isStickySession bool
 	instanceHealth  healthcheck.InstanceHealth
 	leastConnect    upstream.LeastConnect
+	roundrobin      upstream.RoundRobin
 }
 
 func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
@@ -76,8 +77,7 @@ func (tg *TargetGroup) getUpstreamRoundRobin() (string, error) {
 	if len(instances) == 0 {
 		return "", fmt.Errorf("No healthy hosts found\n")
 	}
-	rr := upstream.RoundRobin{}
-	return rr.GetNextUpstream(instances), nil
+	return tg.roundrobin.GetNextUpstream(instances), nil
 }
 
 //getUpstreamLeastConnect - return upstream host with small number of concurrent connections
@@ -86,8 +86,7 @@ func (tg *TargetGroup) getUpstreamLeastConnect() (string, error) {
 	if len(instances) == 0 {
 		return "", fmt.Errorf("No healthy hosts found\n")
 	}
-	leastConnect := upstream.LeastConnect{}
-	return leastConnect.GetNextUpstream(instances), nil
+	return tg.leastConnect.GetNextUpstream(instances), nil
 }
 
 func (tg *TargetGroup) GetPath() string {

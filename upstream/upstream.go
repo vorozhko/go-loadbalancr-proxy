@@ -9,7 +9,7 @@ type RoundRobin struct {
 }
 
 type LeastConnect struct {
-	instanceConnections map[string]int
+	connections map[string]int
 }
 
 //GetUpstream - return next upstream host based on round robin algorithm
@@ -25,28 +25,28 @@ func (rr *RoundRobin) GetNextUpstream(instances []string) string {
 
 func InitLeastConnect(instances []string) LeastConnect {
 	lc := LeastConnect{}
-	lc.instanceConnections = make(map[string]int, len(instances))
+	lc.connections = make(map[string]int, len(instances))
 	return lc
 }
 
 func (lc *LeastConnect) GetNextUpstream(instances []string) string {
-	leastConnectInstance := instances[0]
-	leastConnectRequests := lc.instanceConnections[leastConnectInstance]
+	host := instances[0]
+	connectedTimes := lc.connections[host]
 	for _, inst := range instances {
-		if lc.instanceConnections[inst] < leastConnectRequests {
-			leastConnectRequests = lc.instanceConnections[inst]
-			leastConnectInstance = inst
+		if lc.connections[inst] < connectedTimes {
+			connectedTimes = lc.connections[inst]
+			host = inst
 		}
 	}
 	//todo: remove debug information
-	fmt.Printf("Least connect host %s with %d connections\n", leastConnectInstance, leastConnectRequests)
-	return leastConnectInstance
+	fmt.Printf("Least connect host %s with %d connections\n", host, connectedTimes)
+	return host
 }
 
 func (lc *LeastConnect) Connect(host string) {
-	lc.instanceConnections[host]++
+	lc.connections[host]++
 }
 
 func (lc *LeastConnect) Disconnect(host string) {
-	lc.instanceConnections[host]--
+	lc.connections[host]--
 }
