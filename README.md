@@ -1,5 +1,8 @@
 # Loadbalancer in Golang
 
+### About the project
+*This project is intended for education purpose only and not suitable for production use. If you have constructive feedback please let me know.*
+
 ## Usage
 Describe load balancing ports and targets in config.yaml. See [example config file](example/config.yaml).
 
