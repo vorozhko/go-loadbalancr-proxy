@@ -30,7 +30,8 @@ func main() {
 * Sticky sessions support
 
 ### Milestone 3 (WIP)
-* Refactoring
+* Refactor upstream selection
+* Refactor health checker
 
 ### Milestone 4
 * Retry on error
