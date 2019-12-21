@@ -29,7 +29,7 @@ func main() {
 * Content based routing
 * Sticky sessions support
 
-### Milestone 3 (WIP)
+### Milestone 3 ([Release 0.0.4](https://gitlab.com/vorozhko/loadbalancer/-/tags/v0.0.4))
 * Refactor upstream selection
 * Refactor health checker
 
@@ -104,6 +104,9 @@ func main() {
 * Exlcude down servers from upstream selection
 * Implemented Least connections algorithm
 * Added support for sticky sessions
+
+### Release 0.0.4
+* Refactoring of upstream selection and health checker
 
 ### Links
 * [Load balancing wiki page](https://en.wikipedia.org/wiki/Load_balancing_(computing))
