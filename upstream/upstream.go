@@ -1,4 +1,4 @@
-package roundrobin
+package upstream
 
 //RoundRobin - Round robin load balancer target selection
 type RoundRobin struct {

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 
 	"gitlab.com/vorozhko/loadbalancer/config"
-	"gitlab.com/vorozhko/loadbalancer/roundrobin"
+	healthcheck "gitlab.com/vorozhko/loadbalancer/healthcheck"
+	"gitlab.com/vorozhko/loadbalancer/upstream"
 )
 
 //TargetGroup - is a loadbalancer target group instance
@@ -16,10 +16,9 @@ type TargetGroup struct {
 	fromPort            int
 	path                string
 	instances           []string
-	roundrobin          *roundrobin.RoundRobin
-	instanceNotHealthy  map[string]bool
 	instanceConnections map[string]int
 	isStickySession     bool
+	instanceHealth      healthcheck.InstanceHealth
 }
 
 func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
@@ -29,32 +28,14 @@ func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
 	tg.path = target.GetPath()
 	tg.instances = target.GetInstances()
 	tg.isStickySession = target.GetStickySession()
-	//todo: create custom type for instances or instance health
-	tg.instanceNotHealthy = make(map[string]bool, len(target.GetInstances()))
 	tg.instanceConnections = make(map[string]int, len(target.GetInstances()))
-	go tg.healthChecker(25 * time.Second)
+	ih := healthcheck.InstanceHealth{}
+	ih.SetInstances(tg.instances, tg.toPort)
+	tg.instanceHealth = ih
+	go ih.HealthChecker(25)
 	return &tg
 }
 
-//healthChecker - periodically check bad healthy hosts for recover
-func (tg *TargetGroup) healthChecker(checkInterval time.Duration) {
-	for {
-		if len(tg.instanceNotHealthy) > 0 {
-			for instance, status := range tg.instanceNotHealthy {
-				if status == false {
-					continue
-				}
-				upstream := fmt.Sprintf("%s:%d", instance, tg.toPort)
-				res, err := http.Get(upstream)
-				if err == nil && res != nil {
-					tg.instanceNotHealthy[instance] = false
-					fmt.Printf("%s makred as healty\n", instance)
-				}
-			}
-		}
-		time.Sleep(checkInterval)
-	}
-}
 func (tg *TargetGroup) getUpstream(w http.ResponseWriter, req *http.Request) (string, error) {
 	//todo: here several algorithms of upstream selection could be implemented
 	//the best one should win
@@ -93,19 +74,20 @@ func (tg *TargetGroup) getUpstream(w http.ResponseWriter, req *http.Request) (st
 }
 
 func (tg *TargetGroup) getUpstreamRoundRobin() (string, error) {
-	instances, err := tg.getHealtyInstances()
-	if err != nil {
-		return "", err
+	instances := tg.instanceHealth.GetHealthyInstances()
+	if len(instances) == 0 {
+		return "", fmt.Errorf("No healthy hosts found\n")
 	}
-	return tg.roundrobin.GetNextUpstreamIndex(instances), nil
+	rr := upstream.RoundRobin{}
+	return rr.GetNextUpstreamIndex(instances), nil
 }
 
 //todo: move Least Connect alogirthm to dedicated package or combine with round robin in one package
 //getUpstreamLeastConnect - return upstream host with small number of concurrent connections
 func (tg *TargetGroup) getUpstreamLeastConnect() (string, error) {
-	instances, err := tg.getHealtyInstances()
-	if err != nil {
-		return "", err
+	instances := tg.instanceHealth.GetHealthyInstances()
+	if len(instances) == 0 {
+		return "", fmt.Errorf("No healthy hosts found\n")
 	}
 	leastConnectInstance := instances[0]
 	leastConnectRequests := tg.instanceConnections[leastConnectInstance]
@@ -120,27 +102,16 @@ func (tg *TargetGroup) getUpstreamLeastConnect() (string, error) {
 	return leastConnectInstance, nil
 }
 
-//getHealtyInstances - return healthy instances
-func (tg *TargetGroup) getHealtyInstances() ([]string, error) {
-	instances := make([]string, 0)
-	for _, inst := range tg.instances {
-		if tg.instanceNotHealthy[inst] == false {
-			instances = append(instances, inst)
-		}
-	}
-	if len(instances) == 0 {
-		return nil, fmt.Errorf("No healthy hosts found\n")
-	}
-	return instances, nil
-}
-
-//SetUpstreamSelection - set an algorithm for select of upstream server
-func (tg *TargetGroup) SetUpstreamSelection(roundRobin *roundrobin.RoundRobin) {
-	tg.roundrobin = roundRobin
-}
-
 func (tg *TargetGroup) GetPath() string {
 	return tg.path
+}
+
+func (tg *TargetGroup) GetInstances() []string {
+	return tg.instances
+}
+
+func (tg *TargetGroup) GetToPort() int {
+	return tg.toPort
 }
 
 //ServeHTTP - implement http.Handler.ServeHTTP for server mux
@@ -148,7 +119,6 @@ func (tg *TargetGroup) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var client http.Client
 
 	//get upstream
-	//upstreamHost := req.Context().Value('upstream')
 	upstreamHost, err := tg.getUpstream(w, req)
 	if err != nil {
 		fmt.Print(err)
@@ -163,14 +133,14 @@ func (tg *TargetGroup) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		//todo: replace with Logger middleware
 		fmt.Printf("%s", err)
-		tg.instanceNotHealthy[upstreamHost] = true
+		tg.instanceHealth.SetHealth(false, upstreamHost, tg.toPort)
 		fmt.Printf("%s makred unhealty\n", upstreamHost)
 		return
 	}
 	if upstreamRes == nil {
 		//todo: replace with Logger middleware
 		fmt.Printf("Empty response from server")
-		tg.instanceNotHealthy[upstreamHost] = true
+		tg.instanceHealth.SetHealth(false, upstreamHost, tg.toPort)
 		fmt.Printf("%s makred unhealty\n", upstreamHost)
 		return
 	}

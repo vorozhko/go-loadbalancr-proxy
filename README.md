@@ -30,6 +30,9 @@ func main() {
 * Sticky sessions support
 
 ### Milestone 3 (WIP)
+* Refactoring
+
+### Milestone 4
 * Retry on error
 * Request parsing: client ip, host, port, path
 * HTTP compression

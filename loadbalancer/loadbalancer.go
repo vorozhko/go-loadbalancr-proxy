@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	config "gitlab.com/vorozhko/loadbalancer/config"
-	"gitlab.com/vorozhko/loadbalancer/roundrobin"
 	"gitlab.com/vorozhko/loadbalancer/targetgroup"
 )
 
@@ -39,8 +38,6 @@ func (app *LoadBalancer) startListeners() error {
 	for _, target := range app.config.Targets {
 		//Multiple target groups support split by URI.Path
 		tg := targetgroup.InitTargetGroup(target)
-		roundRobin := roundrobin.RoundRobin{}
-		tg.SetUpstreamSelection(&roundRobin)
 		targetGroupsList[target.FromPort] = append(targetGroupsList[target.FromPort], tg)
 	}
 
