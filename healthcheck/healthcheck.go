@@ -16,6 +16,14 @@ type Instance struct {
 	healthy bool
 }
 
+func InitInstanceHealth(instances []string, toPort int) InstanceHealth {
+	ih := InstanceHealth{}
+	ih.SetInstances(instances, toPort)
+	//run background health checker to recover status of unhealthy hosts
+	go ih.HealthChecker(25)
+	return ih
+}
+
 func (ih *InstanceHealth) SetInstances(instances []string, toPort int) {
 	ih.instances = make([]Instance, len(instances))
 	for index, host := range instances {

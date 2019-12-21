@@ -12,13 +12,13 @@ import (
 
 //TargetGroup - is a loadbalancer target group instance
 type TargetGroup struct {
-	toPort              int
-	fromPort            int
-	path                string
-	instances           []string
-	instanceConnections map[string]int
-	isStickySession     bool
-	instanceHealth      healthcheck.InstanceHealth
+	toPort          int
+	fromPort        int
+	path            string
+	instances       []string
+	isStickySession bool
+	instanceHealth  healthcheck.InstanceHealth
+	leastConnect    upstream.LeastConnect
 }
 
 func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
@@ -28,11 +28,8 @@ func InitTargetGroup(target config.ConfigTargetGroup) *TargetGroup {
 	tg.path = target.GetPath()
 	tg.instances = target.GetInstances()
 	tg.isStickySession = target.GetStickySession()
-	tg.instanceConnections = make(map[string]int, len(target.GetInstances()))
-	ih := healthcheck.InstanceHealth{}
-	ih.SetInstances(tg.instances, tg.toPort)
-	tg.instanceHealth = ih
-	go ih.HealthChecker(25)
+	tg.leastConnect = upstream.InitLeastConnect(tg.instances)
+	tg.instanceHealth = healthcheck.InitInstanceHealth(tg.instances, tg.toPort)
 	return &tg
 }
 
@@ -73,33 +70,24 @@ func (tg *TargetGroup) getUpstream(w http.ResponseWriter, req *http.Request) (st
 	return upstreamHost, nil
 }
 
+//getUpstreamRoundRobin - return next upstream by round robin algorithm
 func (tg *TargetGroup) getUpstreamRoundRobin() (string, error) {
 	instances := tg.instanceHealth.GetHealthyInstances()
 	if len(instances) == 0 {
 		return "", fmt.Errorf("No healthy hosts found\n")
 	}
 	rr := upstream.RoundRobin{}
-	return rr.GetNextUpstreamIndex(instances), nil
+	return rr.GetNextUpstream(instances), nil
 }
 
-//todo: move Least Connect alogirthm to dedicated package or combine with round robin in one package
 //getUpstreamLeastConnect - return upstream host with small number of concurrent connections
 func (tg *TargetGroup) getUpstreamLeastConnect() (string, error) {
 	instances := tg.instanceHealth.GetHealthyInstances()
 	if len(instances) == 0 {
 		return "", fmt.Errorf("No healthy hosts found\n")
 	}
-	leastConnectInstance := instances[0]
-	leastConnectRequests := tg.instanceConnections[leastConnectInstance]
-	for _, inst := range instances {
-		if tg.instanceConnections[inst] < leastConnectRequests {
-			leastConnectRequests = tg.instanceConnections[inst]
-			leastConnectInstance = inst
-		}
-	}
-	//todo: remove debug information
-	fmt.Printf("Least connect host %s with %d connections\n", leastConnectInstance, leastConnectRequests)
-	return leastConnectInstance, nil
+	leastConnect := upstream.LeastConnect{}
+	return leastConnect.GetNextUpstream(instances), nil
 }
 
 func (tg *TargetGroup) GetPath() string {
@@ -124,10 +112,10 @@ func (tg *TargetGroup) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		fmt.Print(err)
 		return
 	}
-	tg.instanceConnections[upstreamHost]++
+	tg.leastConnect.Connect(upstreamHost)
 	upstream := fmt.Sprintf("%s:%d", upstreamHost, tg.toPort)
 	upstreamRes, err := client.Get(upstream + req.RequestURI)
-	tg.instanceConnections[upstreamHost]--
+	tg.leastConnect.Disconnect(upstreamHost)
 
 	//process response
 	if err != nil {
